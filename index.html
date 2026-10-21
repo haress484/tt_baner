@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Баннеры для TikTok</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0b0b0b; color: #eee; font-family: system-ui, sans-serif; min-height: 100vh; }
+    .topbar { position: sticky; top: 0; z-index: 10; display: flex; justify-content: center; padding: 12px; background: rgba(11,11,11,.9); backdrop-filter: blur(8px); border-bottom: 1px solid #1d1d1d; }
+    .tg { display: inline-flex; align-items: center; gap: 8px; padding: 10px 26px; border-radius: 999px; background: #229ed9; color: #fff; font-weight: 700; font-size: 15px; text-decoration: none; transition: filter .2s, transform .2s; }
+    .tg:hover { filter: brightness(1.12); transform: translateY(-1px); }
+    .tg svg { width: 20px; height: 20px; fill: #fff; }
+    .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); gap: 20px; padding: 20px; max-width: 1600px; margin: 0 auto; }
+    .card { background: #151515; border: 1px solid #222; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+    .card canvas { width: 100%; height: auto; display: block; background: #000; }
+    .card button { margin: 10px; padding: 10px; border: none; border-radius: 8px; background: #2a2a2a; color: #fff; font-weight: 600; font-size: 14px; cursor: pointer; transition: background .2s; }
+    .card button:hover:not(:disabled) { background: #3a3a3a; }
+    .card button:disabled { opacity: .6; cursor: wait; }
+    .empty { grid-column: 1 / -1; text-align: center; color: #777; padding: 60px 20px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <!-- Овальная кнопка Telegram. Ссылка на канал задаётся в TELEGRAM_URL ниже в скрипте -->
+    <a id="tg-btn" class="tg" href="#" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M9.78 15.67 9.4 20.1c.55 0 .79-.24 1.08-.52l2.6-2.49 5.38 3.94c.99.55 1.69.26 1.96-.91L23.96 4.5c.32-1.46-.53-2.03-1.5-1.67L1.4 10.9c-1.44.56-1.42 1.36-.25 1.72l5.4 1.69L19.1 6.4c.59-.39 1.13-.17.69.22L9.78 15.67Z"/></svg>
+      Telegram
+    </a>
+  </div>
+  <main class="gallery" id="gallery"></main>
+
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.169.0/build/three.module.js" } }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    /* =====================================================================
+       ★★★  НАСТРОЙКИ  (всё, что нужно менять, — здесь)  ★★★
+       ===================================================================== */
+
+    // ★ 1. ССЫЛКИ НА ЗНАЧКИ — ВСТАВЛЯТЬ СЮДА, ЧЕРЕЗ ЗАПЯТУЮ ★
+    //    PNG/WebP без фона (с прозрачностью), ссылки на GitHub.
+    //    Можно ссылку вида github.com/.../blob/... — она сама превратится в raw-ссылку.
+    //    Каждая ссылка = один новый баннер в галерее. Можно писать с новой строки.
+    const ICON_LINKS = `
+      https://raw.githubusercontent.com/ВАШ_НИК/ВАШ_РЕПО/main/icons/icon1.png,
+      https://raw.githubusercontent.com/ВАШ_НИК/ВАШ_РЕПО/main/icons/icon2.png
+    `;
+
+    // ★ 2. ССЫЛКА НА ТЕЛЕГРАМ-КАНАЛ — ВСТАВЛЯТЬ СЮДА ★
+    const TELEGRAM_URL = 'https://t.me/ВАШ_КАНАЛ';
+
+    // ★ 3. ТОЛЩИНА 3D-ЗНАЧКА — РЕГУЛИРОВКА ЗДЕСЬ ★
+    //    В процентах от размера значка. 0 = плоский, 8 = тонкий, 15 = нормальный, 30 = толстый.
+    const ICON_THICKNESS = 15;
+
+    // ★ 4. МУЗЫКА ДЛЯ СКАЧИВАЕМОГО ВИДЕО — ССЫЛКА СЮДА ★
+    //    mp3 / m4a / ogg / wav, можно ссылку с GitHub (blob-ссылка тоже сработает) или файл рядом с index.html.
+    //    Музыка обрезается до DURATION секунд. Пустая строка '' = видео без звука.
+    const MUSIC_URL = 'music.mp3';
+    const MUSIC_START = 0;         // с какой секунды трека начинать
+    const MUSIC_VOLUME = 1;        // громкость: 0..1
+
+    // --- Остальные настройки (по желанию) ---
+    // Шаблон баннера: фото рук БЕЗ значка. Положи файл рядом с index.html или поставь ссылку с GitHub.
+    const TEMPLATE_URL = 'template.jpg';
+    const DURATION = 9;            // длительность видео, секунды (зацикленное)
+    const TURNS = 1;               // сколько полных оборотов значка за DURATION
+    const FPS = 30;                // кадров в секунду в видео
+    const EXPORT_WIDTH = 1280;     // ширина скачиваемого видео, px
+    const ICON_CENTER_X = 0.485;   // центр значка по X (доля ширины баннера)
+    const ICON_CENTER_Y = 0.490;   // центр значка по Y (доля высоты баннера)
+    const ICON_SIZE = 0.207;       // размер значка (доля ширины баннера)
+    const ALPHA_CUTOFF = 0.5;      // порог прозрачности для контура
+    const SMOOTHING = 1.5;         // сглаживание контура
+    /* ===================================================================== */
+
+    document.getElementById('tg-btn').href = TELEGRAM_URL;
+
+    // ---------- загрузка картинок ----------
+    function toRaw(url) {
+      return url.trim().replace(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:blob|raw)\/(.+)$/, 'https://raw.githubusercontent.com/$1/$2/$3');
+    }
+    function loadImg(url) {
+      return new Promise((res, rej) => {
+        const im = new Image(); im.crossOrigin = 'anonymous';
+        im.onload = () => res(im); im.onerror = () => rej(new Error('load ' + url));
+        im.src = url;
+      });
+    }
+
+    // ---------- контуры (из Cutout Studio) ----------
+    function traceLoops(mask, w, h) {
+      const W = w + 1, out = new Map();
+      const add = (x0, y0, x1, y1) => { const k = y0 * W + x0; let a = out.get(k); if (!a) { a = []; out.set(k, a); } a.push(y1 * W + x1); };
+      const on = (x, y) => x >= 0 && y >= 0 && x < w && y < h && mask[y * w + x] === 1;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        if (!mask[y * w + x]) continue;
+        if (!on(x, y - 1)) add(x, y, x + 1, y);
+        if (!on(x + 1, y)) add(x + 1, y, x + 1, y + 1);
+        if (!on(x, y + 1)) add(x + 1, y + 1, x, y + 1);
+        if (!on(x - 1, y)) add(x, y + 1, x, y);
+      }
+      const loops = [];
+      for (const [k0, arr] of out) while (arr.length) {
+        const loop = [k0]; let k = arr.pop(), g = 0;
+        while (k !== k0 && g++ < 50000000) { loop.push(k); const a = out.get(k); if (!a || !a.length) break; k = a.pop(); }
+        loops.push(loop.map(v => [v % W, (v / W) | 0]));
+      }
+      return loops;
+    }
+    function segDist(p, a, b) {
+      const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+      if (!l2) return Math.hypot(p[0] - a[0], p[1] - a[1]);
+      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2));
+      return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+    }
+    function rdp(pts, eps) {
+      const n = pts.length; if (n <= 2) return pts;
+      const keep = new Uint8Array(n); keep[0] = keep[n - 1] = 1;
+      const st = [[0, n - 1]];
+      while (st.length) {
+        const [s, e] = st.pop(); let md = 0, mi = -1;
+        for (let i = s + 1; i < e; i++) { const d = segDist(pts[i], pts[s], pts[e]); if (d > md) { md = d; mi = i; } }
+        if (mi >= 0 && md > eps) { keep[mi] = 1; st.push([s, mi], [mi, e]); }
+      }
+      return pts.filter((_, i) => keep[i]);
+    }
+    function simplifyClosed(pts, eps) {
+      if (pts.length < 4) return pts;
+      let fi = 0, fd = -1;
+      for (let i = 1; i < pts.length; i++) { const d = (pts[i][0] - pts[0][0]) ** 2 + (pts[i][1] - pts[0][1]) ** 2; if (d > fd) { fd = d; fi = i; } }
+      return rdp(pts.slice(0, fi + 1), eps).slice(0, -1).concat(rdp(pts.slice(fi).concat([pts[0]]), eps).slice(0, -1));
+    }
+    function signedArea(p) { let a = 0; for (let i = 0; i < p.length; i++) { const j = (i + 1) % p.length; a += p[i][0] * p[j][1] - p[j][0] * p[i][1]; } return a / 2; }
+    function inPoly(pt, poly) {
+      let r = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [xi, yi] = poly[i], [xj, yj] = poly[j];
+        if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi) r = !r;
+      }
+      return r;
+    }
+
+    // ---------- 3D-значок из картинки ----------
+    function buildIconMesh(img) {
+      const sc = Math.min(1, 1024 / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * sc)), h = Math.max(1, Math.round(img.height * sc));
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const cx = cv.getContext('2d', { willReadFrequently: true });
+      cx.drawImage(img, 0, 0, w, h);
+      const data = cx.getImageData(0, 0, w, h).data;
+      const mask = new Uint8Array(w * h);
+      for (let i = 0; i < w * h; i++) mask[i] = data[i * 4 + 3] >= ALPHA_CUTOFF * 255 ? 1 : 0;
+
+      const outers = [], holes = [];
+      for (const loop of traceLoops(mask, w, h)) {
+        const s = simplifyClosed(loop, SMOOTHING);
+        if (s.length < 3) continue;
+        const a = signedArea(s);
+        if (Math.abs(a) < 4) continue;
+        (a > 0 ? outers : holes).push({ pts: s, area: Math.abs(a) });
+      }
+      if (!outers.length) throw new Error('empty contour');
+
+      const us = 1 / Math.max(w, h);           // самая длинная сторона значка = 1
+      const fw = w * us, fh = h * us;
+      const toShape = (pts, Cls) => {
+        const s = new Cls();
+        pts.forEach(([px, py], i) => { const x = (px - w / 2) * us, y = -(py - h / 2) * us; i ? s.lineTo(x, y) : s.moveTo(x, y); });
+        s.closePath(); return s;
+      };
+      const shapes = outers.map(o => ({ o, shape: toShape(o.pts, THREE.Shape) }));
+      for (const hole of holes) {
+        let best = null;
+        const probes = [hole.pts[0], hole.pts[hole.pts.length >> 1]];
+        for (const s of shapes) if (probes.some(p => inPoly(p, s.o.pts)) && (!best || s.o.area < best.o.area)) best = s;
+        if (best) best.shape.holes.push(toShape(hole.pts, THREE.Path));
+      }
+
+      const depth = ICON_THICKNESS / 100;
+      const list = shapes.map(s => s.shape);
+      let geo;
+      if (depth > 0.001) { geo = new THREE.ExtrudeGeometry(list, { depth, bevelEnabled: false, curveSegments: 1 }); geo.translate(0, 0, -depth / 2); }
+      else geo = new THREE.ShapeGeometry(list, 1);
+
+      const pos = geo.attributes.position, uv = new Float32Array(pos.count * 2);
+      for (let i = 0; i < pos.count; i++) { uv[i * 2] = pos.getX(i) / fw + 0.5; uv[i * 2 + 1] = 0.5 - pos.getY(i) / fh; }
+      geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+
+      const tex = new THREE.CanvasTexture(cv);
+      tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; tex.anisotropy = 8;
+      const face = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
+      const side = new THREE.MeshBasicMaterial({ map: tex, color: 0x8a8a8a, side: THREE.DoubleSide }); // боковые грани темнее — виден объём
+      return new THREE.Mesh(geo, depth > 0.001 ? [face, side] : face);
+    }
+
+    // ---------- один общий рендерер для всех баннеров ----------
+    const R = 768;
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+    renderer.setSize(R, R, false); renderer.setPixelRatio(1);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.setClearColor(0x000000, 0);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
+    const MARGIN = 1.1;                                          // запас вокруг значка
+    camera.position.set(0, 0, 0.5 * MARGIN / Math.tan(THREE.MathUtils.degToRad(15)));
+
+    let template = null;
+    function drawBanner(banner, ctx, W, H, t) {
+      if (template) ctx.drawImage(template, 0, 0, W, H); else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
+      banner.mesh.rotation.y = (t / DURATION) * TURNS * Math.PI * 2;
+      scene.add(banner.mesh); renderer.render(scene, camera); scene.remove(banner.mesh);
+      const s = ICON_SIZE * W * MARGIN;
+      ctx.drawImage(renderer.domElement, ICON_CENTER_X * W - s / 2, ICON_CENTER_Y * H - s / 2, s, s);
+    }
+
+    // ---------- музыка ----------
+    let musicBuffer = null;
+    async function loadMusic() {
+      if (!MUSIC_URL) return;
+      try {
+        const r = await fetch(toRaw(MUSIC_URL));
+        if (!r.ok) throw new Error(r.status);
+        const ac = new (window.AudioContext || window.webkitAudioContext)();
+        musicBuffer = await ac.decodeAudioData(await r.arrayBuffer());
+        ac.close();
+      } catch (e) { console.warn('Музыка не загрузилась, видео будет без звука:', MUSIC_URL, e); }
+    }
+    // кусок трека ровно на DURATION секунд (если трек короче — зацикливается)
+    function getMusicPcm() {
+      if (!musicBuffer) return null;
+      const sr = musicBuffer.sampleRate, total = Math.round(DURATION * sr), len = musicBuffer.length;
+      const ch = Math.min(2, musicBuffer.numberOfChannels), start = Math.round(MUSIC_START * sr) % len;
+      const channels = [];
+      for (let c = 0; c < ch; c++) {
+        const src = musicBuffer.getChannelData(c), out = new Float32Array(total);
+        for (let i = 0; i < total; i++) out[i] = src[(start + i) % len] * MUSIC_VOLUME;
+        channels.push(out);
+      }
+      return { sampleRate: sr, channels };
+    }
+    async function pickAudioCodec(sampleRate, numberOfChannels) {
+      for (const [codec, mux] of [['mp4a.40.2', 'aac'], ['opus', 'opus']]) {
+        try { if ((await AudioEncoder.isConfigSupported({ codec, sampleRate, numberOfChannels, bitrate: 128000 })).supported) return { codec, mux }; } catch (e) {}
+      }
+      return null;
+    }
+    async function encodeAudio(muxer, pcm, codec) {
+      const ch = pcm.channels.length, sr = pcm.sampleRate, total = pcm.channels[0].length;
+      const enc = new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: e => { throw e; } });
+      enc.configure({ codec, sampleRate: sr, numberOfChannels: ch, bitrate: 128000 });
+      const N = 4096;
+      for (let off = 0; off < total; off += N) {
+        const n = Math.min(N, total - off), planar = new Float32Array(n * ch);
+        for (let c = 0; c < ch; c++) planar.set(pcm.channels[c].subarray(off, off + n), c * n);
+        const ad = new AudioData({ format: 'f32-planar', sampleRate: sr, numberOfFrames: n, numberOfChannels: ch, timestamp: Math.round(off / sr * 1e6), data: planar });
+        enc.encode(ad); ad.close();
+      }
+      await enc.flush();
+    }
+
+    // ---------- видео ----------
+    async function exportVideo(banner, onProgress) {
+      const W = EXPORT_WIDTH, H = Math.round(W * (template ? template.height / template.width : 9 / 16) / 2) * 2;
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      const ctx = cv.getContext('2d');
+      const total = DURATION * FPS;
+
+      // Основной путь: покадровая запись в MP4 (быстро и без пропусков кадров)
+      if ('VideoEncoder' in window) {
+        try {
+          const { Muxer, ArrayBufferTarget } = await import('https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.mjs');
+          const pcm = getMusicPcm();
+          const aCfg = pcm && 'AudioEncoder' in window ? await pickAudioCodec(pcm.sampleRate, pcm.channels.length) : null;
+          const muxer = new Muxer({
+            target: new ArrayBufferTarget(),
+            video: { codec: 'avc', width: W, height: H },
+            ...(aCfg ? { audio: { codec: aCfg.mux, numberOfChannels: pcm.channels.length, sampleRate: pcm.sampleRate } } : {}),
+            fastStart: 'in-memory'
+          });
+          if (aCfg) await encodeAudio(muxer, pcm, aCfg.codec);
+          const enc = new VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: e => { throw e; } });
+          enc.configure({ codec: 'avc1.640028', width: W, height: H, bitrate: 8_000_000, framerate: FPS });
+          for (let i = 0; i < total; i++) {
+            drawBanner(banner, ctx, W, H, i / FPS);
+            const f = new VideoFrame(cv, { timestamp: Math.round(i * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
+            enc.encode(f, { keyFrame: i % FPS === 0 }); f.close();
+            while (enc.encodeQueueSize > 8) await new Promise(r => setTimeout(r, 5));
+            if (i % 6 === 0) { onProgress(i / total); await new Promise(r => setTimeout(r, 0)); }
+          }
+          await enc.flush(); muxer.finalize();
+          return { blob: new Blob([muxer.target.buffer], { type: 'video/mp4' }), ext: 'mp4' };
+        } catch (e) { console.warn('WebCodecs недоступен, пробую MediaRecorder', e); }
+      }
+
+      // Запасной путь: запись в реальном времени
+      const mime = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m));
+      const stream = cv.captureStream(FPS);
+      let ac = null, src = null;
+      if (musicBuffer) {
+        ac = new (window.AudioContext || window.webkitAudioContext)();
+        src = ac.createBufferSource(); src.buffer = musicBuffer; src.loop = true;
+        const g = ac.createGain(); g.gain.value = MUSIC_VOLUME;
+        const dest = ac.createMediaStreamDestination();
+        src.connect(g); g.connect(dest);
+        dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+      }
+      const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8_000_000 });
+      const chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+      const done = new Promise(r => rec.onstop = r);
+      rec.start();
+      if (src) src.start(0, MUSIC_START % musicBuffer.duration);
+      const t0 = performance.now();
+      await new Promise(res => {
+        const tick = () => {
+          const t = (performance.now() - t0) / 1000;
+          if (t >= DURATION) return res();
+          drawBanner(banner, ctx, W, H, t); onProgress(t / DURATION); requestAnimationFrame(tick);
+        };
+        tick();
+      });
+      rec.stop(); await done;
+      if (src) src.stop(); if (ac) ac.close();
+      return { blob: new Blob(chunks, { type: mime.split(';')[0] }), ext: mime.includes('mp4') ? 'mp4' : 'webm' };
+    }
+
+    // ---------- галерея ----------
+    const gallery = document.getElementById('gallery');
+    const banners = [];
+    const PREVIEW_W = 960;
+
+    function addCard(mesh, index) {
+      const H = Math.round(PREVIEW_W * (template ? template.height / template.width : 9 / 16));
+      const card = document.createElement('div'); card.className = 'card';
+      const cv = document.createElement('canvas'); cv.width = PREVIEW_W; cv.height = H;
+      const btn = document.createElement('button'); btn.textContent = '⬇ Скачать видео';
+      card.append(cv, btn); gallery.appendChild(card);
+      const banner = { mesh, cv, ctx: cv.getContext('2d'), W: PREVIEW_W, H, visible: false, busy: false };
+      new IntersectionObserver(e => { banner.visible = e[0].isIntersecting; }).observe(card);
+      btn.addEventListener('click', async () => {
+        if (banner.busy) return;
+        banner.busy = true; btn.disabled = true;
+        try {
+          const { blob, ext } = await exportVideo(banner, p => btn.textContent = `Рендер… ${Math.round(p * 100)}%`);
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+          a.download = `banner-${index + 1}.${ext}`; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        } catch (e) { console.error(e); alert('Не удалось создать видео в этом браузере. Попробуйте Chrome.'); }
+        finally { banner.busy = false; btn.disabled = false; btn.textContent = '⬇ Скачать видео'; }
+      });
+      banners.push(banner);
+    }
+
+    function loop() {
+      requestAnimationFrame(loop);
+      const t = (performance.now() / 1000) % DURATION;
+      for (const b of banners) if (b.visible && !b.busy) drawBanner(b, b.ctx, b.W, b.H, t);
+    }
+
+    (async function init() {
+      try { template = await loadImg(TEMPLATE_URL); } catch (e) { console.warn('Шаблон не загрузился:', TEMPLATE_URL); }
+      loadMusic();   // грузится в фоне, к моменту нажатия «Скачать» уже готова
+      const links = ICON_LINKS.split(',').map(toRaw).filter(Boolean);
+      let n = 0;
+      for (const url of links) {
+        try { addCard(buildIconMesh(await loadImg(url)), n++); }
+        catch (e) { console.warn('Значок пропущен:', url, e); }
+      }
+      if (!n) gallery.innerHTML = '<div class="empty">Нет баннеров. Добавьте ссылки на значки в ICON_LINKS.</div>';
+      loop();
+    })();
+  </script>
+</body>
+</html>
