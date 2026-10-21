@@ -11,7 +11,7 @@
     .tg { display: inline-flex; align-items: center; gap: 8px; padding: 10px 26px; border-radius: 999px; background: #229ed9; color: #fff; font-weight: 700; font-size: 15px; text-decoration: none; transition: filter .2s, transform .2s; }
     .tg:hover { filter: brightness(1.12); transform: translateY(-1px); }
     .tg svg { width: 20px; height: 20px; fill: #fff; }
-    .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); gap: 20px; padding: 20px; max-width: 1600px; margin: 0 auto; }
+    .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 420px)); justify-content: center; gap: 20px; padding: 20px; max-width: 1600px; margin: 0 auto; }
     .card { background: #151515; border: 1px solid #222; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
     .card canvas { width: 100%; height: auto; display: block; background: #000; }
     .card button { margin: 10px; padding: 10px; border: none; border-radius: 8px; background: #2a2a2a; color: #fff; font-weight: 600; font-size: 14px; cursor: pointer; transition: background .2s; }
@@ -46,11 +46,75 @@
     //    Можно ссылку вида github.com/.../blob/... — она сама превратится в raw-ссылку.
     //    Каждая ссылка = один новый баннер в галерее. Можно писать с новой строки.
     const ICON_LINKS = `
-      https://github.com/haress484/tt_baner/blob/main/claude.png,
+      https://github.com/haress484/tt_baner/blob/main/claude1.png,
+      https://github.com/haress484/tt_baner/blob/main/dota2_2.png,
+      https://github.com/haress484/tt_baner/blob/main/gemini.jpg,
+      https://github.com/haress484/tt_baner/blob/main/giga.jpg,
+      https://github.com/haress484/tt_baner/blob/main/grok.jpg,
+      https://github.com/haress484/tt_baner/blob/main/file_001.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_002.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_003.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_005.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_006.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_007.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_008.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_009.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_010.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_011.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_012.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_013.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_014.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_015.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_016.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_017.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_018.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_019.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_020.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_021.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_022.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_023.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_024.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_025.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_026.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_027.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_028.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_029.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_030.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_031.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_032.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_033.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_034.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_035.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_036.webp,
+      https://github.com/haress484/tt_baner/blob/main/file_037.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_1.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_2.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_3.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_4.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_5.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_6.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_7.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_8.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_9.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_10.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_11.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_12.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_13.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_14.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_15.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_16.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_17.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_18.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_19.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_20.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_21.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_22.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_23.webp,
+      https://github.com/haress484/tt_baner/blob/main/photo_24.webp,
     `;
 
     // ★ 2. ССЫЛКА НА ТЕЛЕГРАМ-КАНАЛ — ВСТАВЛЯТЬ СЮДА ★
-    const TELEGRAM_URL = 'https://t.me/ВАШ_КАНАЛ';
+    const TELEGRAM_URL = 'https://t.me/the_kubicki';
 
     // ★ 3. ТОЛЩИНА 3D-ЗНАЧКА — РЕГУЛИРОВКА ЗДЕСЬ ★
     //    В процентах от размера значка. 0 = плоский, 8 = тонкий, 15 = нормальный, 30 = толстый.
@@ -59,13 +123,13 @@
     // ★ 4. МУЗЫКА ДЛЯ СКАЧИВАЕМОГО ВИДЕО — ССЫЛКА СЮДА ★
     //    mp3 / m4a / ogg / wav, можно ссылку с GitHub (blob-ссылка тоже сработает) или файл рядом с index.html.
     //    Музыка обрезается до DURATION секунд. Пустая строка '' = видео без звука.
-    const MUSIC_URL = 'music.mp3';
+    const MUSIC_URL = 'https://github.com/haress484/tt_baner/blob/main/music.m4a';
     const MUSIC_START = 0;         // с какой секунды трека начинать
     const MUSIC_VOLUME = 1;        // громкость: 0..1
 
     // --- Остальные настройки (по желанию) ---
     // Шаблон баннера: фото рук БЕЗ значка. Положи файл рядом с index.html или поставь ссылку с GitHub.
-    const TEMPLATE_URL = 'template.jpg';
+    const TEMPLATE_URL = 'https://github.com/haress484/tt_baner/blob/main/template.jpg';
     const DURATION = 9;            // длительность видео, секунды (зацикленное)
     const TURNS = 1;               // сколько полных оборотов значка за DURATION
     const FPS = 30;                // кадров в секунду в видео
@@ -187,7 +251,13 @@
       else geo = new THREE.ShapeGeometry(list, 1);
 
       const pos = geo.attributes.position, uv = new Float32Array(pos.count * 2);
-      for (let i = 0; i < pos.count; i++) { uv[i * 2] = pos.getX(i) / fw + 0.5; uv[i * 2 + 1] = 0.5 - pos.getY(i) / fh; }
+      const nrm = geo.attributes.normal;
+      for (let i = 0; i < pos.count; i++) {
+        const u = pos.getX(i) / fw + 0.5;
+        const isBack = nrm && nrm.getZ(i) < -0.5;      // ★ задняя крышка: true = рисуем НЕ зеркально. Чтобы вернуть зеркальную обратную сторону, замените на: const isBack = false;
+        uv[i * 2] = isBack ? 1 - u : u;
+        uv[i * 2 + 1] = 0.5 - pos.getY(i) / fh;
+      }
       geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 
       const tex = new THREE.CanvasTexture(cv);
@@ -348,7 +418,12 @@
           const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
           a.download = `banner-${index + 1}.${ext}`; a.click();
           setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-        } catch (e) { console.error(e); alert('Не удалось создать видео в этом браузере. Попробуйте Chrome.'); }
+        } catch (e) {
+          console.error(e);
+          alert(location.protocol === 'file:'
+            ? 'Видео нельзя скачать с локального файла (браузер блокирует). Выложите сайт на GitHub Pages или откройте через локальный сервер.'
+            : 'Не удалось создать видео в этом браузере. Попробуйте Chrome.');
+        }
         finally { banner.busy = false; btn.disabled = false; btn.textContent = '⬇ Скачать видео'; }
       });
       banners.push(banner);
@@ -361,7 +436,13 @@
     }
 
     (async function init() {
-      try { template = await loadImg(TEMPLATE_URL); } catch (e) { console.warn('Шаблон не загрузился:', TEMPLATE_URL); }
+      // Шаблон: сначала с CORS (нужно для экспорта видео), если не вышло (например, открыт локальный файл) — без CORS, хотя бы для превью
+      try { template = await loadImg(toRaw(TEMPLATE_URL)); }
+      catch (e) {
+        try {
+          template = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = toRaw(TEMPLATE_URL); });
+        } catch (e2) { console.warn('Шаблон не загрузился:', TEMPLATE_URL); }
+      }
       loadMusic();   // грузится в фоне, к моменту нажатия «Скачать» уже готова
       const links = ICON_LINKS.split(',').map(toRaw).filter(Boolean);
       let n = 0;
