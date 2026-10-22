@@ -31,11 +31,12 @@
   <main class="gallery" id="gallery"></main>
 
   <script type="importmap">
-    { "imports": { "three": "https://unpkg.com/three@0.169.0/build/three.module.js" } }
+    { "imports": { "three": "https://unpkg.com/three@0.169.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/" } }
   </script>
 
   <script type="module">
     import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
     /* =====================================================================
        ★★★  НАСТРОЙКИ  (всё, что нужно менять, — здесь)  ★★★
@@ -111,6 +112,14 @@
       https://github.com/haress484/tt_baner/blob/main/photo_22.webp,
       https://github.com/haress484/tt_baner/blob/main/photo_23.webp,
       https://github.com/haress484/tt_baner/blob/main/photo_24.webp,
+      https://github.com/haress484/tt_baner/blob/main/sticker.webp,
+    `;
+
+    // ★ 1б. ССЫЛКИ НА 3D-МОДЕЛИ (.glb) ИЗ РЕПОЗИТОРИЯ — ВСТАВЛЯТЬ СЮДА, ЧЕРЕЗ ЗАПЯТУЮ ★
+    //    Модель сама центрируется и вписывается между руками, вращается так же, как значки.
+    //    Настройка толщины ICON_THICKNESS на них не действует (объём уже есть в модели).
+    //    Пример: https://github.com/ВАШ_НИК/ВАШ_РЕПО/blob/main/models/monster.glb,
+    const MODEL_LINKS = `
     `;
 
     // ★ 2. ССЫЛКА НА ТЕЛЕГРАМ-КАНАЛ — ВСТАВЛЯТЬ СЮДА ★
@@ -267,6 +276,18 @@
       return new THREE.Mesh(geo, depth > 0.001 ? [face, side] : face);
     }
 
+    // ---------- 3D-модель (.glb / .gltf) ----------
+    async function loadModel(url) {
+      const gltf = await new GLTFLoader().loadAsync(url);
+      const model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+      model.position.sub(center);                                       // центр модели -> в начало координат
+      const k = 1 / Math.max(size.y, Math.hypot(size.x, size.z), 1e-6); // влезает при вращении вокруг вертикали
+      const pivot = new THREE.Group(); pivot.add(model); pivot.scale.setScalar(k);
+      return pivot;
+    }
+
     // ---------- один общий рендерер для всех баннеров ----------
     const R = 768;
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
@@ -274,6 +295,8 @@
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.setClearColor(0x000000, 0);
     const scene = new THREE.Scene();
+    scene.add(new THREE.AmbientLight(0xffffff, 1.6));            // свет нужен только 3D-моделям (значки-картинки без освещения)
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.0); keyLight.position.set(1, 2, 3); scene.add(keyLight);
     const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
     const MARGIN = 1.1;                                          // запас вокруг значка
     camera.position.set(0, 0, 0.5 * MARGIN / Math.tan(THREE.MathUtils.degToRad(15)));
@@ -400,7 +423,7 @@
     // ---------- галерея ----------
     const gallery = document.getElementById('gallery');
     const banners = [];
-    const PREVIEW_W = 960;
+    const PREVIEW_W = 720;
 
     function addCard(mesh, index) {
       const H = Math.round(PREVIEW_W * (template ? template.height / template.width : 9 / 16));
@@ -444,12 +467,17 @@
         } catch (e2) { console.warn('Шаблон не загрузился:', TEMPLATE_URL); }
       }
       loadMusic();   // грузится в фоне, к моменту нажатия «Скачать» уже готова
-      const links = ICON_LINKS.split(',').map(toRaw).filter(Boolean);
+      const parse = str => str.split(',').map(toRaw).filter(Boolean);
+      const jobs = [
+        ...parse(ICON_LINKS).map(u => ({ u, run: () => loadImg(u).then(buildIconMesh) })),
+        ...parse(MODEL_LINKS).map(u => ({ u, run: () => loadModel(u) }))
+      ];
+      const results = await Promise.allSettled(jobs.map(j => j.run()));   // грузим всё параллельно, порядок сохраняется
       let n = 0;
-      for (const url of links) {
-        try { addCard(buildIconMesh(await loadImg(url)), n++); }
-        catch (e) { console.warn('Значок пропущен:', url, e); }
-      }
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled') addCard(r.value, n++);
+        else console.warn('Пропущено:', jobs[i].u, r.reason);
+      });
       if (!n) gallery.innerHTML = '<div class="empty">Нет баннеров. Добавьте ссылки на значки в ICON_LINKS.</div>';
       loop();
     })();
